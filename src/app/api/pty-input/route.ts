@@ -156,17 +156,16 @@ export async function POST(req: Request) {
           break;
         }
 
-        if (blind ? attempt === 1 : inBox) {
+        // Never retype: in a long session Claude Code takes several seconds to log a prompt it
+        // already accepted, so "not seen yet" usually means "slow", and retyping sent one message
+        // 4 times. Only press Enter when the text is visibly stuck in the box; otherwise wait.
+        if (inBox || (blind && attempt === 1)) {
           writeToSession(sessionId, "\r");
-        } else if (busy) {
-          // Text unaccounted for while Claude works: a bare Enter is safe, retyping is not.
-          writeToSession(sessionId, "\r");
+          delivered = await landed(fs, sessionId, sentAt, busy ? 120_000 : 8000, textPart);
         } else {
-          writeToSession(sessionId, asPaste(textPart));
-          await sleep(submitDelay(textPart.length) + 150);
-          writeToSession(sessionId, "\r");
+          delivered = await landed(fs, sessionId, sentAt, 60_000, textPart);
+          break;
         }
-        delivered = await landed(fs, sessionId, sentAt, busy ? 120_000 : 3000, textPart);
       }
     }
   }
