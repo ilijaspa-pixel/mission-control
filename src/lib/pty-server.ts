@@ -794,10 +794,15 @@ async function handleConnection(
           attachWsHandlers(state, existing, ws);
           setTimeout(() => {
             if (existing.ws !== ws || existing.ptyExited) return;
+            // Pause between the two resizes so Claude Code sees a real size change and repaints.
             try {
               existing.pty.resize(Math.max(2, initialCols - 1), initialRows);
-              existing.pty.resize(initialCols, initialRows);
             } catch {}
+            setTimeout(() => {
+              try {
+                if (!existing.ptyExited) existing.pty.resize(initialCols, initialRows);
+              } catch {}
+            }, 180);
           }, 120);
         });
         return;
@@ -832,8 +837,12 @@ async function handleConnection(
         if (existing.ws !== ws || existing.ptyExited) return;
         try {
           existing.pty.resize(Math.max(2, initialCols - 1), initialRows);
-          existing.pty.resize(initialCols, initialRows);
         } catch {}
+        setTimeout(() => {
+          try {
+            if (!existing.ptyExited) existing.pty.resize(initialCols, initialRows);
+          } catch {}
+        }, 180);
       }, 120);
       return;
     }
